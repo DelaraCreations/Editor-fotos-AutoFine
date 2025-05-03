@@ -1,7 +1,0 @@
-streamlit
-torch
-torchvision
-transformers
-diffusers
-Pillow
-pandas
