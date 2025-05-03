@@ -67,10 +67,17 @@ def resize_image(image, max_size=512):
         return image.resize((int(w * scale), int(h * scale)))
     return image
 
+def compress_image(image, quality=75):
+    from io import BytesIO
+    buf = BytesIO()
+    image.save(buf, format="JPEG", quality=quality)
+    buf.seek(0)
+    return Image.open(buf)
+
 def main():
-    st.set_page_config(page_title="Editor IA Leve", layout="centered")
+    st.set_page_config(page_title="Editor IA Aprimorado", layout="centered")
     st.title("Editor de Fotos com IA Aprendente")
-    st.write("Otimizado para celulares Android. IA mais leve e rápida.")
+    st.write("Melhor experiência em celulares Android. IA leve, rápida e personalizada.")
 
     uploaded_file = st.file_uploader("Carregue sua imagem", type=["jpg", "jpeg", "png"])
 
@@ -78,11 +85,14 @@ def main():
         try:
             image = Image.open(uploaded_file).convert("RGB")
             image = resize_image(image)
-            st.image(image, caption="Imagem original (ajustada)", use_column_width=True)
+            image = compress_image(image)
+            st.image(image, caption="Imagem otimizada para IA", use_column_width=True)
 
-            with st.spinner("Carregando inteligência artificial..."):
+            with st.spinner("Descrevendo a imagem com IA..."):
                 processor, model = load_model()
                 description = describe_image(image, processor, model)
+
+            with st.spinner("Aplicando o melhor efeito..."):
                 feedback_df = load_feedback()
                 effect = choose_effect(description, feedback_df)
                 edited_image = apply_effect(image, effect)
@@ -98,14 +108,15 @@ def main():
             )
 
             st.markdown("---")
-            st.subheader("Ajudar a IA a melhorar")
+            st.subheader("Feedback para melhorar a IA")
             liked = st.radio("Você gostou do efeito sugerido?", ["Sim", "Não"], horizontal=True)
 
             if liked == "Não":
                 manual = st.selectbox("Escolha o efeito que preferia:", ["preto e branco", "retrô", "vibrante", "suave"])
                 if st.button("Salvar feedback"):
                     save_feedback(description, manual)
-                    st.success("Obrigado! A IA vai usar essa informação da próxima vez.")
+                    st.success("Obrigado! A IA usará essa preferência na próxima vez.")
+
         except Exception as e:
             st.error(f"Ocorreu um erro ao processar a imagem: {e}")
 
