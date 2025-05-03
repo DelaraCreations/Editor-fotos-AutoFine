@@ -1,50 +1,77 @@
 import streamlit as st
 from PIL import Image, ImageEnhance, ImageFilter
 import numpy as np
+from io import BytesIO
 
-st.set_page_config(page_title="Editor de Fotos IA", layout="centered")
-st.title("Editor de Fotos com Efeitos Dinâmicos")
-st.markdown("Otimize, edite e aplique filtros em suas imagens com fluidez no Android e desktop.")
+st.set_page_config(
+    page_title="Editor de Fotos IA",
+    layout="centered",
+    page_icon=":camera:",
+    initial_sidebar_state="expanded"
+)
 
-uploaded_file = st.file_uploader("Escolha uma imagem", type=["jpg", "jpeg", "png"])
+# Estilo customizado (tema preto e laranja)
+st.markdown("""
+    <style>
+    body {
+        background-color: #111;
+        color: #FFA500;
+    }
+    .css-1v0mbdj, .css-1v0mbdj p, .css-1v0mbdj h1, .css-1v0mbdj h2 {
+        color: #FFA500 !important;
+    }
+    .stSlider > div > div {
+        background: #FFA500;
+    }
+    .stButton>button {
+        background-color: #FFA500;
+        color: black;
+        border-radius: 8px;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
-if uploaded_file is not None:
+st.title("Editor de Fotos Inteligente")
+st.write("Ajustes automáticos com toques personalizados. Inspire-se no estilo do CapCut.")
+
+uploaded_file = st.file_uploader("Envie sua imagem", type=["jpg", "jpeg", "png"])
+
+if uploaded_file:
     try:
         image = Image.open(uploaded_file).convert("RGB")
-
         st.image(image, caption="Imagem Original", use_column_width=True)
-        st.markdown("---")
-        st.subheader("Ajustes Personalizados")
 
-        col1, col2 = st.columns(2)
-        with col1:
-            brightness = st.slider("Brilho", 0.1, 2.0, 1.0)
-            contrast = st.slider("Contraste", 0.1, 2.0, 1.0)
-        with col2:
-            sharpness = st.slider("Nitidez", 0.1, 2.0, 1.0)
-            filter_option = st.selectbox("Filtro", ["Nenhum", "Contorno", "Detalhe", "Bordas"])
+        st.sidebar.header("Efeitos automáticos")
+        auto_enhance = st.sidebar.checkbox("Melhoria automática de brilho, contraste e nitidez", value=True)
+        aplicar_filtro = st.sidebar.selectbox("Filtro artístico", ["Nenhum", "Contorno", "Detalhe", "Bordas", "Desfoque leve"])
 
-        # Aplicar melhorias
-        image = ImageEnhance.Brightness(image).enhance(brightness)
-        image = ImageEnhance.Contrast(image).enhance(contrast)
-        image = ImageEnhance.Sharpness(image).enhance(sharpness)
+        if auto_enhance:
+            image = ImageEnhance.Brightness(image).enhance(1.2)
+            image = ImageEnhance.Contrast(image).enhance(1.2)
+            image = ImageEnhance.Sharpness(image).enhance(1.3)
 
-        if filter_option == "Contorno":
+        if aplicar_filtro == "Contorno":
             image = image.filter(ImageFilter.CONTOUR)
-        elif filter_option == "Detalhe":
+        elif aplicar_filtro == "Detalhe":
             image = image.filter(ImageFilter.DETAIL)
-        elif filter_option == "Bordas":
+        elif aplicar_filtro == "Bordas":
             image = image.filter(ImageFilter.FIND_EDGES)
+        elif aplicar_filtro == "Desfoque leve":
+            image = image.filter(ImageFilter.GaussianBlur(1.5))
 
         st.image(image, caption="Imagem Editada", use_column_width=True)
 
-        from io import BytesIO
         buf = BytesIO()
         image.save(buf, format="JPEG")
         byte_im = buf.getvalue()
-        st.download_button("Baixar imagem editada", data=byte_im, file_name="imagem_editada.jpg", mime="image/jpeg")
+        st.download_button(
+            label="Baixar imagem editada",
+            data=byte_im,
+            file_name="imagem_editada.jpg",
+            mime="image/jpeg"
+        )
 
     except Exception as e:
         st.error(f"Erro ao processar a imagem: {e}")
 else:
-    st.info("Por favor, carregue uma imagem no formato JPG ou PNG.")
+    st.info("Por favor, envie uma imagem para começar.")
