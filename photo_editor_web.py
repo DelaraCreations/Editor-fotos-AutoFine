@@ -2,6 +2,10 @@ import streamlit as st
 from PIL import Image, ImageEnhance, ImageFilter
 import numpy as np
 from io import BytesIO
+import torch
+from torchvision import transforms
+from torchvision.models import mobilenet_v2
+import torchvision.transforms.functional as TF
 
 st.set_page_config(
     page_title="Editor de Fotos IA",
@@ -32,9 +36,30 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.title("Editor de Fotos Inteligente")
-st.write("Ajustes automáticos com toques personalizados. Inspire-se no estilo do CapCut.")
+st.write("Edição automática com IA e estilo CapCut")
 
-uploaded_file = st.file_uploader("Envie sua imagem", type=["jpg", "jpeg", "png"])
+uploaded_file = st.file_uploader("Envie sua imagem", type=["jpg", "jpeg", "png", "webp"])
+
+@st.cache_resource
+
+def load_model():
+    model = mobilenet_v2(pretrained=True)
+    model.eval()
+    return model
+
+@torch.no_grad()
+def aplicar_ia_classificacao(image):
+    model = load_model()
+    preprocess = transforms.Compose([
+        transforms.Resize((224, 224)),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                             std=[0.229, 0.224, 0.225])
+    ])
+    tensor = preprocess(image).unsqueeze(0)
+    output = model(tensor)
+    _, predicted = torch.max(output, 1)
+    return predicted.item()
 
 if uploaded_file:
     try:
@@ -44,6 +69,7 @@ if uploaded_file:
         st.sidebar.header("Efeitos automáticos")
         auto_enhance = st.sidebar.checkbox("Melhoria automática de brilho, contraste e nitidez", value=True)
         aplicar_filtro = st.sidebar.selectbox("Filtro artístico", ["Nenhum", "Contorno", "Detalhe", "Bordas", "Desfoque leve"])
+        aplicar_ia = st.sidebar.checkbox("Usar IA para entender o conteúdo da imagem", value=True)
 
         if auto_enhance:
             image = ImageEnhance.Brightness(image).enhance(1.2)
@@ -58,6 +84,10 @@ if uploaded_file:
             image = image.filter(ImageFilter.FIND_EDGES)
         elif aplicar_filtro == "Desfoque leve":
             image = image.filter(ImageFilter.GaussianBlur(1.5))
+
+        if aplicar_ia:
+            predicted_class = aplicar_ia_classificacao(image)
+            st.success(f"A IA analisou a imagem e detectou classe #{predicted_class}. Isso pode ser usado para personalizar edições futuramente.")
 
         st.image(image, caption="Imagem Editada", use_column_width=True)
 
