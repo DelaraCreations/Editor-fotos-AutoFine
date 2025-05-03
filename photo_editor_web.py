@@ -16,7 +16,7 @@ def load_model():
 
 def describe_image(image, processor, model):
     inputs = processor(image, return_tensors="pt")
-    out = model.generate(**inputs)
+    out = model.generate(**inputs, max_new_tokens=20)
     return processor.decode(out[0], skip_special_tokens=True).lower()
 
 def choose_effect(description, feedback_df):
@@ -60,43 +60,54 @@ def load_feedback():
     else:
         return pd.DataFrame(columns=["description", "preferred_effect"])
 
+def resize_image(image, max_size=512):
+    w, h = image.size
+    if max(w, h) > max_size:
+        scale = max_size / max(w, h)
+        return image.resize((int(w * scale), int(h * scale)))
+    return image
+
 def main():
-    st.set_page_config(page_title="Editor de Fotos com IA Aprendente", layout="centered")
+    st.set_page_config(page_title="Editor IA Leve", layout="centered")
     st.title("Editor de Fotos com IA Aprendente")
-    st.write("A IA sugere efeitos com base no conteúdo e aprende com você!")
+    st.write("Otimizado para celulares Android. IA mais leve e rápida.")
 
     uploaded_file = st.file_uploader("Carregue sua imagem", type=["jpg", "jpeg", "png"])
 
     if uploaded_file:
-        image = Image.open(uploaded_file).convert("RGB")
-        st.image(image, caption="Imagem original", use_column_width=True)
+        try:
+            image = Image.open(uploaded_file).convert("RGB")
+            image = resize_image(image)
+            st.image(image, caption="Imagem original (ajustada)", use_column_width=True)
 
-        with st.spinner("Analisando imagem..."):
-            processor, model = load_model()
-            description = describe_image(image, processor, model)
-            feedback_df = load_feedback()
-            effect = choose_effect(description, feedback_df)
-            edited_image = apply_effect(image, effect)
+            with st.spinner("Carregando inteligência artificial..."):
+                processor, model = load_model()
+                description = describe_image(image, processor, model)
+                feedback_df = load_feedback()
+                effect = choose_effect(description, feedback_df)
+                edited_image = apply_effect(image, effect)
 
-        st.success(f"Efeito aplicado: {effect.capitalize()}")
-        st.image(edited_image, caption="Imagem editada", use_column_width=True)
+            st.success(f"Efeito aplicado: {effect.capitalize()}")
+            st.image(edited_image, caption="Imagem editada", use_column_width=True)
 
-        st.download_button(
-            label="Baixar imagem editada",
-            data=edited_image_to_bytes(edited_image),
-            file_name="imagem_editada.jpg",
-            mime="image/jpeg"
-        )
+            st.download_button(
+                label="Baixar imagem editada",
+                data=edited_image_to_bytes(edited_image),
+                file_name="imagem_editada.jpg",
+                mime="image/jpeg"
+            )
 
-        st.markdown("---")
-        st.subheader("Ajudar a IA a melhorar")
-        liked = st.radio("Você gostou do efeito sugerido?", ["Sim", "Não"], horizontal=True)
+            st.markdown("---")
+            st.subheader("Ajudar a IA a melhorar")
+            liked = st.radio("Você gostou do efeito sugerido?", ["Sim", "Não"], horizontal=True)
 
-        if liked == "Não":
-            manual = st.selectbox("Escolha o efeito que preferia:", ["preto e branco", "retrô", "vibrante", "suave"])
-            if st.button("Salvar feedback"):
-                save_feedback(description, manual)
-                st.success("Obrigado! A IA vai usar essa informação da próxima vez.")
+            if liked == "Não":
+                manual = st.selectbox("Escolha o efeito que preferia:", ["preto e branco", "retrô", "vibrante", "suave"])
+                if st.button("Salvar feedback"):
+                    save_feedback(description, manual)
+                    st.success("Obrigado! A IA vai usar essa informação da próxima vez.")
+        except Exception as e:
+            st.error(f"Ocorreu um erro ao processar a imagem: {e}")
 
 def edited_image_to_bytes(img):
     from io import BytesIO
